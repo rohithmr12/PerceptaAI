@@ -1,0 +1,23 @@
+Just pick one and report findings here or maybe in another text file
+If you find something missing add it and once done just mention that this is done 
+treat this like Jira
+
+Agent: Rohith is working on this rn
+    research to decide the best models at different sizes
+    required specs:
+        conversation(understanding instructions and relaying info to the user)
+        decision(choosing tools based on instructions)
+
+Framework:
+    speech to text module 
+    text to speech module 
+    camera input openCV ig
+
+Pipelines:
+    Navigation(algorithms and models needed)
+    OCR(modules required for it)
+    for now 
+
+Plausibility:
+    research on existing systems to realize how the latency of the pipelines are treated 
+
