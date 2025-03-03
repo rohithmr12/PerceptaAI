@@ -8,7 +8,7 @@ Agent: Rohith is working on this rn
         conversation(understanding instructions and relaying info to the user)
         decision(choosing tools based on instructions)
 
-Framework:
+Framework: Samarth
     speech to text module 
     text to speech module 
     camera input openCV ig
