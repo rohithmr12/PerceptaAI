@@ -19,5 +19,5 @@ Pipelines:
     for now 
 
 Plausibility:
-    research on existing systems to realize how the latency of the pipelines are treated 
-
+    research on existing systems to realize how the latency of the pipelines are treated (HOW to optimize inferencing models)
+    ***someone please take this up
