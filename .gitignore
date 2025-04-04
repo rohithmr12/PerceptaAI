@@ -5,7 +5,8 @@ __pycache__/
 cap/
 # C extensions
 *.so
-
+eye/
+meta-llama/
 # Distribution / packaging
 .Python
 build/
