@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 cap/
+Nav/yolov8n.pt
+Nav/yolov8m.pt
 # C extensions
 *.so
 eye/
