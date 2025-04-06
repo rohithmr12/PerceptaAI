@@ -8,6 +8,8 @@ Nav/yolov8m.pt
 # C extensions
 *.so
 eye/
+test.png
+test.jpg
 meta-llama/
 # Distribution / packaging
 .Python
