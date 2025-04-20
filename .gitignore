@@ -5,6 +5,7 @@ __pycache__/
 cap/
 Nav/yolov8n.pt
 Nav/yolov8m.pt
+Nav/yolo11x.pt
 # C extensions
 *.so
 eye/

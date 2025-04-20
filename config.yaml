@@ -1,0 +1,27 @@
+# Configuration for the Assistant
+
+# --- API / Server ---
+lm_studio_base_url: "http://localhost:1234/v1"
+openai_api_key: "lm-studio" # Dummy key for LM Studio
+
+# --- Models ---
+# Ensure these match the identifiers in your LM Studio server
+tool_llm_model_id: "hugging-quants/Llama-3.2-3B-Instruct-Q8_0-GGUF/llama-3.2-3b-instruct-q8_0.gguf"
+vision_llm_model_id: "lmstudio-community/granite-vision-3.2-2b-GGUF"
+
+# --- TTS ---
+tts_voice: 'am_onyx'
+audio_sample_rate: 24000
+
+# --- Navigation ---
+map_filepath: "map.json"
+navigation_update_interval: 2.0 # Seconds between checking nav progress
+off_route_threshold_nodes: 2 # How many steps off the direct path before triggering reroute (simulation only)
+proximity_threshold_meters: 1.5 # TODO: Use this when coordinate positioning is added
+
+# --- Assistant Behavior ---
+max_chat_history: 10
+command_check_interval: 0.5
+
+# --- Paths (Optional - Example for Tesseract) ---
+# tesseract_cmd_path: 'C:\Program Files\Tesseract-OCR\tesseract.exe'

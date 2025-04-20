@@ -1,0 +1,12 @@
+{
+    "nodes": [
+        {
+            "id": "initial_node",
+            "x": 2491,
+            "y": 1864,
+            "nodeClass": "initial",
+            "directionX": 0.0,
+            "directionY": 0.0
+        }
+    ]
+}

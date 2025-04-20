@@ -1,0 +1,29 @@
+# Parameters for assisting map generation tool
+
+skeletonize_parameters:
+  scaler: 4               # How much to downscale image before skeletonization (faster, less precise)
+  kernel1_size: 3         # Erosion kernel after dilation
+  kernel2_size: 3         # Dilation kernel before erosion
+  dilate_iteration: 1
+  erode_iteration: 1
+
+extract_corner_parameters:
+  block_size: 3           # Harris corner block size
+  ksize: 3                # Harris corner aperture parameter
+  k: 0.04                 # Harris corner free parameter
+  corner_threshold_ratio: 0.02 # Percentage of max Harris response to threshold corners
+  min_distance: 10        # Min distance (in skeleton pixels) to merge nearby corners
+
+
+ocr_parameters:
+  # --- ENSURE THIS PATH IS CORRECT FOR YOUR SYSTEM ---
+  tesseract_cmd_path: "C:/Program Files/Tesseract-OCR/tesseract.exe" #<-- YOUR ACTUAL PATH HERE
+  # --------------------------------------------------
+  tesseract_config: '--psm 6' # Optional overrides
+  min_confidence: 50       # Optional overrides
+
+display_parameters:
+  suggestion_intersection_color: [0, 0, 255] # Red for intersection suggestions
+  suggestion_poi_color: [255, 0, 255]      # Magenta for POI suggestions
+  suggestion_radius: 4
+  max_suggestion_snap_distance: 20 # Max distance (display pixels) to snap click to suggestion

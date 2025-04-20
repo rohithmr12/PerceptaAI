@@ -73,6 +73,12 @@ langcodes==3.5.0
 langgraph==0.3.21
 langgraph-checkpoint==2.0.23
 langgraph-prebuilt==0.1.7
+opencv-python==4.9.0.80
+numpy==2.1.2
+Pillow==11.0.0
+easyocr==1.7.1
+torch==2.2.1
+pytesseract==0.3.10
 # langgraph-sdk==0.1.60
 # langsmith==0.3.19
 # language-tags==1.2.0
@@ -92,13 +98,11 @@ langgraph-prebuilt==0.1.7
 # nest-asyncio==1.6.0
 # networkx==3.3
 # num2words==0.5.14
-# numpy==2.1.2
 # orjson==3.10.16
 # ormsgpack==1.9.1
 # packaging==24.2
 # parso==0.8.4
 # phonemizer-fork==3.3.2
-# pillow==11.0.0
 # platformdirs==4.3.7
 # preshed==3.0.9
 # prompt_toolkit==3.0.50
@@ -170,6 +174,5 @@ langgraph-prebuilt==0.1.7
 # yarl==1.18.3
 # zstandard==0.23.0
 --index-url https://download.pytorch.org/whl/cu126
-torch==2.2.1+cu126
 torchvision==0.17.1+cu126
 torchaudio==2.2.1+cu126

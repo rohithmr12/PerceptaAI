@@ -1,0 +1,302 @@
+{
+    "nodes": [
+        {
+            "id": "node0",
+            "x": 2574,
+            "y": 243,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node1"
+                },
+                {
+                    "endNode": "node7"
+                }
+            ]
+        },
+        {
+            "id": "node1",
+            "x": 1395,
+            "y": 396,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node3"
+                },
+                {
+                    "endNode": "node0"
+                }
+            ]
+        },
+        {
+            "id": "node2",
+            "x": 783,
+            "y": 621,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node5"
+                }
+            ]
+        },
+        {
+            "id": "node3",
+            "x": 1305,
+            "y": 864,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node5"
+                },
+                {
+                    "endNode": "node1"
+                },
+                {
+                    "endNode": "node15"
+                }
+            ]
+        },
+        {
+            "id": "node5",
+            "x": 936,
+            "y": 963,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node2"
+                },
+                {
+                    "endNode": "node3"
+                },
+                {
+                    "endNode": "node18"
+                }
+            ]
+        },
+        {
+            "id": "node7",
+            "x": 2826,
+            "y": 1620,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node0"
+                },
+                {
+                    "endNode": "node9"
+                },
+                {
+                    "endNode": "node8"
+                }
+            ]
+        },
+        {
+            "id": "node8",
+            "x": 3195,
+            "y": 1629,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node7"
+                },
+                {
+                    "endNode": "node25"
+                }
+            ]
+        },
+        {
+            "id": "node9",
+            "x": 2808,
+            "y": 1746,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node7"
+                },
+                {
+                    "endNode": "node11"
+                }
+            ]
+        },
+        {
+            "id": "node10",
+            "x": 2385,
+            "y": 1800,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node11"
+                },
+                {
+                    "endNode": "node16"
+                }
+            ]
+        },
+        {
+            "id": "node11",
+            "x": 2727,
+            "y": 1818,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node10"
+                },
+                {
+                    "endNode": "node24"
+                },
+                {
+                    "endNode": "node9"
+                }
+            ]
+        },
+        {
+            "id": "node15",
+            "x": 1593,
+            "y": 1935,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node3"
+                },
+                {
+                    "endNode": "node16"
+                }
+            ]
+        },
+        {
+            "id": "node16",
+            "x": 2133,
+            "y": 1962,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node19"
+                },
+                {
+                    "endNode": "node10"
+                },
+                {
+                    "endNode": "node15"
+                }
+            ]
+        },
+        {
+            "id": "node18",
+            "x": 1170,
+            "y": 2151,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node20"
+                },
+                {
+                    "endNode": "node5"
+                },
+                {
+                    "endNode": "node22"
+                }
+            ]
+        },
+        {
+            "id": "node19",
+            "x": 2124,
+            "y": 2160,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node22"
+                },
+                {
+                    "endNode": "node16"
+                },
+                {
+                    "endNode": "node23"
+                }
+            ]
+        },
+        {
+            "id": "node20",
+            "x": 1035,
+            "y": 2169,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node18"
+                }
+            ]
+        },
+        {
+            "id": "node22",
+            "x": 2052,
+            "y": 2223,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node19"
+                },
+                {
+                    "endNode": "node18"
+                }
+            ]
+        },
+        {
+            "id": "node23",
+            "x": 2232,
+            "y": 2259,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node19"
+                },
+                {
+                    "endNode": "node24"
+                }
+            ]
+        },
+        {
+            "id": "node24",
+            "x": 2763,
+            "y": 2259,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node23"
+                },
+                {
+                    "endNode": "node11"
+                },
+                {
+                    "endNode": "node25"
+                }
+            ]
+        },
+        {
+            "id": "node25",
+            "x": 3150,
+            "y": 2295,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node24"
+                },
+                {
+                    "endNode": "node26"
+                },
+                {
+                    "endNode": "node8"
+                }
+            ]
+        },
+        {
+            "id": "node26",
+            "x": 3141,
+            "y": 2727,
+            "nodeClass": "intersection",
+            "outgoingLinks": [
+                {
+                    "endNode": "node25"
+                }
+            ]
+        }
+    ]
+}

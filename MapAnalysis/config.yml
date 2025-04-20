@@ -19,7 +19,8 @@ extract_corridor_parameters:
   addWeighted_alpha: 0.5
   binary_threshold: 0.5
   area_threshold_2: 100
-  measure_connectivity: 2
+  measure_connectivity: 8
+
 
 skeletonize_parameters:
   scaler: 9
@@ -29,9 +30,10 @@ skeletonize_parameters:
   erode_iteration: 4
 
 extract_corner_parameters:
-  block_size: 3  
-  ksize: 3  
+  block_size: 3
+  ksize: 3
   k: 0.05
+  corner_threshold_ratio: 0.01  
 
 extract_connection_parameters:
   threshold_value: 128
@@ -52,3 +54,8 @@ poi_merge_parameters:
 
 find_endpoint_parameters:
   max_explore_distance: 1000
+
+ocr_parameters:
+  height: 480
+  width: 640
+  ocr_langs: ['ja', 'en'] 

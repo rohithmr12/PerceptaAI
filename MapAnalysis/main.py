@@ -32,10 +32,16 @@ class MapRecognizer:
         if not os.path.exists(self.json_path):
             os.makedirs(self.json_path)
 
-        with open("config.yml", "r") as ymlfile:
+        with open("C:/Users/rohit/perceptaai/MapAnalysis/config.yml", "r") as ymlfile:
             self.config = yaml.safe_load(ymlfile)
 
     def recognize_map(self, image_path):
+        floormap_image = cv2.imread(image_path)
+        
+        # Add this check
+        if floormap_image is None:
+            print(f"Error: Could not load image from {image_path}. Please check if the file exists and is a valid image.")
+            return
         floormap_image = cv2.imread(image_path)
         basename = os.path.basename(image_path)
         name_without_extension = basename.split(".")[0]
@@ -631,7 +637,7 @@ class MapRecognizer:
 
 
 if __name__ == "__main__":
-    default_path = 'datasource/floor.png'
+    default_path = 'C:/Users/rohit/perceptaai/MapAnalysis/datasource/floor.png'
 
     parser = argparse.ArgumentParser(description="MapRecognizer")
     parser.add_argument('--img', type=str, default=default_path, help="Path to the image file")

@@ -1,0 +1,48 @@
+{
+  "nodes": [
+    {
+      "id": "node1",
+      "name": "Entrance",
+      "type": "Entrance",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "node2",
+      "name": "Hallway Intersection",
+      "type": "Intersection",
+      "x": 5,
+      "y": 0
+    },
+    {
+      "id": "node3",
+      "name": "Elevator Lobby",
+      "type": "Area",
+      "x": 10,
+      "y": 0,
+      "landmark": "the elevator buttons"
+    },
+    {
+      "id": "node4",
+      "name": "Reception Desk",
+      "type": "Reception",
+      "x": 5,
+      "y": 5,
+      "landmark": "the front desk"
+    }
+  ],
+  "links": [
+    {
+      "startNode": "node1",
+      "endNode": "node2"
+    },
+    {
+      "startNode": "node2",
+      "endNode": "node3"
+    },
+    {
+      "startNode": "node2",
+      "endNode": "node4"
+    }
+  ]
+}
