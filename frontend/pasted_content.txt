@@ -1,0 +1,37 @@
+The agent.ipynb notebook explores and demonstrates the "agentic" capabilities of the Percepta AI system, focusing on how a Large Language Model (LLM) can understand user intent and decide to use various tools. Here's a breakdown:
+Core Idea: LLM as a Tool Orchestrator:
+The primary purpose seems to be setting up an LLM (connected via LM Studio or other services like OpenRouter) that can intelligently decide which of the pre-defined tools (indoor_navigation, general_navigation, scene_description, ocr_text) to call based on a user's natural language query.
+It uses LangChain for framework functionalities like tool definition (@tool decorator), binding tools to an LLM, and managing the interaction flow.
+Tool Definitions:
+The notebook defines Python functions for the tools mentioned in the README.md:
+indoor_navigation: Mocked to provide directions based on a simple dictionary-based floor plan.
+general_navigation: Mocked to give very basic GPS-based directions.
+scene_description: Mocked to return a random description from a predefined list (this is different from the more elaborate sceene_description.ipynb which uses a vision model). This version is likely for testing the agent's tool-calling logic without the overhead of the actual vision model.
+ocr_text: Uses pytesseract to perform OCR on an image path.
+These tools are then collected into a list that is made available to the LLM.
+LLM Interaction and Tool Calling:
+It configures a ChatOpenAI client to connect to an LLM server (LM Studio by default, but also shows an example with OpenRouter).
+The crucial step is llm.bind_tools(tools), which informs the LLM about the available functions, their purpose (from docstrings), and their expected arguments.
+When a user query is sent to llm_with_tools.invoke(query), the LLM analyzes the query. If it determines that one of its tools can help fulfill the request, its response will include tool_calls.
+The notebook then shows how to inspect these tool_calls to see which tool the LLM selected, what arguments it decided to pass, and a unique tool_call_id.
+In a full application, the system would then execute the chosen tool with the provided arguments and potentially send the result back to the LLM for further processing or to generate a final user-facing response.
+Streaming Text-to-Speech (TTS) Experiment (Earlier Cells):
+The initial cells of the notebook (which were interrupted during execution in the provided file) contain code very similar to sceene_description.ipynb.
+This section experiments with:
+Connecting to an LLM via LM Studio (specifically Llama-3.2-3B-Instruct).
+Streaming the LLM's text response.
+Using kokoro.KPipeline for Text-to-Speech.
+Employing threading and queues (audio_queue, text_queue) to chunk the incoming text, convert it to audio, and play it back concurrently, providing a real-time spoken output of the LLM's generation.
+It includes logic for splitting text into sentences or by buffer length to manage the TTS process.
+Smart Home Control Experiment (Middle Cells):
+There's another distinct section that uses the instructor library and Pydantic models to create a smart home control agent.
+It defines functions set_temperature and toggle_lights.
+Pydantic models (FunctionCall, FunctionArguments) define the structure for how the LLM should request these functions.
+The instructor library, along with an OpenAI-compatible client (pointed to OpenRouter with a Llama 3.2 model), is used to process user commands (e.g., "make the living room a bit warmer") and translate them into structured function calls.
+This demonstrates a more structured approach to function calling where the LLM's output is directly parsed into predefined models.
+In essence, agent.ipynb serves as a development and experimentation space for:
+Integrating LLMs with external tools: Showing how an LLM can decide to use functions to interact with the outside world or retrieve information.
+Real-time interaction: Exploring how to stream LLM output and convert it to speech for a more immediate user experience.
+Structured function calling: Testing libraries like instructor for more robust and predictable tool usage by the LLM.
+Prototyping the "brain" of the Percepta AI system: While sceene_description.ipynb focuses on one specific tool, agent.ipynb explores how multiple tools could be orchestrated by a central LLM-based agent.
+The notebook contains various commented-out sections and experiments, indicating it's a workspace for trying different approaches to building the agentic capabilities of the Percepta AI project.

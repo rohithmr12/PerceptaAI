@@ -1,0 +1,5 @@
+flask==2.3.3
+werkzeug==2.3.7
+langchain==0.0.267
+scipy==1.11.3
+numpy==1.25.2
