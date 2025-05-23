@@ -1,11 +1,43 @@
-numpy>=1.20.0
-torch>=1.10.0
-pydantic>=2.0.0
-langchain-openai>=0.0.2
+# Core ML libraries
+torch>=2.0.0
+torchaudio>=2.0.0
+transformers>=4.30.0
+accelerate>=0.20.0
+
+# Computer Vision
+opencv-python>=4.8.0
+pillow>=10.0.0
+
+# Advanced OCR libraries
+pytesseract>=0.3.10
+easyocr>=1.7.0
+paddlepaddle>=2.3.0
+paddleocr>=2.6.0
+PyMuPDF>=1.20.0
+
+# Audio processing  
+pyaudio>=0.2.11
+sounddevice>=0.4.6
+librosa>=0.10.0
+numpy>=1.24.0
+
+# Speech Recognition and TTS
+openai-whisper>=20231117
+kokoro-onnx>=0.1.1
+TTS>=0.22.0
+
+# Utilities
+requests>=2.31.0
+keyboard>=0.13.5
+
+# LangChain
+langchain>=0.1.0
+langchain-openai>=0.0.5
 langchain-core>=0.1.0
-langchain-anthropic>=0.1.0
-sounddevice>=0.4.5
-kokoro>=0.1.0
-opencv-python>=4.5.0
-pytesseract>=0.3.0
-pillow>=8.0.0
+
+# Navigation and ML
+ultralytics>=8.0.0
+
+# Additional utilities
+Pillow>=10.0.0
+scikit-image>=0.21.0

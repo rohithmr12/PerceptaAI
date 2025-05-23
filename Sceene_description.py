@@ -72,7 +72,7 @@ def sceene_description_with_tts(tts_pipeline): # Added tts_pipeline argument
         return
 
     # 3. Prepare Prompt and Message
-    prompt = "Describe this image in detail for a person who is blind. Focus on object positions, types, and potential obstacles or points of interest."
+    prompt = "I want you to describe the image to a blind person in 2 sentences only"
     message = HumanMessage(
         content=[
             {"type": "text", "text": prompt},
@@ -206,3 +206,72 @@ def sceene_description_with_tts(tts_pipeline): # Added tts_pipeline argument
 #             #      sceene_description_with_tts(other_image_path, tts_pipeline_main)
 #             # else:
 #             #      print(f"Skipping second run, image not found: {other_image_path}")
+
+# Add after the imports
+def stream_text_with_tts(text: str, tts_pipeline) -> None:
+    """
+    Stream any text through TTS using the same audio streaming setup as scene description.
+    Args:
+        text (str): The text to convert to speech
+        tts_pipeline: The initialized TTS pipeline
+    """
+    if not text or not tts_pipeline:
+        return
+
+    # Initialize queues and events
+    audio_queue = queue.Queue()
+    text_queue = queue.Queue()
+    text_ready = threading.Event()
+    generation_done = threading.Event()
+    audio_playing = threading.Event()
+
+    # Start audio threads
+    audio_player_thread = threading.Thread(
+        target=audio_player,
+        args=(
+            audio_queue, generation_done, text_ready, audio_playing,
+            AUDIO_SAMPLE_RATE, AUDIO_PLAYBACK_PAUSE, AUDIO_PLAYER_CHECK_INTERVAL, AUDIO_CHUNK_TIMEOUT
+        ),
+        daemon=True
+    )
+
+    audio_generator_thread = threading.Thread(
+        target=audio_generator,
+        args=(
+            text_queue, audio_queue, generation_done, text_ready,
+            tts_pipeline, TTS_VOICE, MIN_WORDS_FOR_AUDIO
+        ),
+        daemon=True
+    )
+
+    audio_generator_thread.start()
+    audio_player_thread.start()
+
+    try:
+        # Split text into sentences for natural speech
+        sentences = re.split(r'(?<=[.!?])\s+', text)
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if sentence and len(sentence.split()) >= MIN_WORDS_FOR_AUDIO:
+                text_queue.put(sentence)
+
+        # Signal generation end and wait for audio
+        generation_done.set()
+        if audio_generator_thread.is_alive():
+            text_queue.join()
+        audio_queue.join()
+
+    except Exception as e:
+        print(f"Error during TTS streaming: {e}")
+    finally:
+        # Ensure threads are cleaned up
+        generation_done.set()
+        if audio_generator_thread.is_alive():
+            audio_generator_thread.join(timeout=5)
+        if audio_player_thread.is_alive():
+            audio_player_thread.join(timeout=5)
+if __name__ == "__main__":
+    # Initialize TTS pipeline
+    tts_pipeline = initiate_tts_model(desired_device="cuda")
+    # Test the stream_text_with_tts function
+    sceene_description_with_tts(tts_pipeline)

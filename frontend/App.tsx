@@ -5,6 +5,7 @@ import AudioInterface from './components/AudioInterface';
 function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [audioResponse, setAudioResponse] = useState<string | null>(null);
+  const [lastMessage, setLastMessage] = useState<string>('');
 
   // Handle recorded audio
   const handleAudioRecorded = async (audioBlob: Blob) => {
@@ -16,8 +17,7 @@ function App() {
       formData.append('audio', audioBlob, 'recording.wav');
       
       // Send to backend API
-      // Replace with your actual backend endpoint
-      const response = await fetch('http://localhost:5000/process-audio', {
+      const response = await fetch('http://localhost:8000/process-audio', {
         method: 'POST',
         body: formData,
       });
@@ -26,13 +26,16 @@ function App() {
         throw new Error(`Server responded with ${response.status}`);
       }
       
-      // Get audio response from backend
-      const audioData = await response.blob();
-      const audioUrl = URL.createObjectURL(audioData);
-      setAudioResponse(audioUrl);
+      const data = await response.json();
+      setLastMessage(data.message || 'No response message');
+      
+      // If there's audio response, handle it
+      if (data.audio_url) {
+        setAudioResponse(data.audio_url);
+      }
     } catch (error) {
       console.error('Error processing audio:', error);
-      alert('Failed to process audio. Please try again.');
+      setLastMessage('Failed to process audio. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -41,8 +44,8 @@ function App() {
   return (
     <div className="app-container">
       <header>
-        <h1>Audio Agent Interface</h1>
-        <p>Speak to the agent and receive audio responses</p>
+        <h1>Percepta AI Assistant</h1>
+        <p>Hold space to speak, release to process</p>
       </header>
       
       <main>
@@ -51,10 +54,15 @@ function App() {
           isProcessing={isProcessing}
           audioResponse={audioResponse}
         />
+        {lastMessage && (
+          <div className="message-display">
+            <p>{lastMessage}</p>
+          </div>
+        )}
       </main>
       
       <footer>
-        <p>Audio interface for agent interaction</p>
+        <p>Powered by Percepta AI</p>
       </footer>
     </div>
   );

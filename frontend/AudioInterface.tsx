@@ -16,52 +16,70 @@ const AudioInterface = ({ onAudioRecorded, isProcessing, audioResponse }: AudioI
   const timerRef = useRef<number | null>(null);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
-  // Handle recording start/stop
-  const toggleRecording = async () => {
-    if (isRecording) {
-      // Stop recording
-      if (mediaRecorderRef.current) {
-        mediaRecorderRef.current.stop();
-        if (timerRef.current) {
-          window.clearInterval(timerRef.current);
-          timerRef.current = null;
+  // Handle space key for push-to-talk
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !e.repeat && !isProcessing && !isPlaying) {
+        e.preventDefault();
+        startRecording();
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && isRecording) {
+        e.preventDefault();
+        stopRecording();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isRecording, isProcessing, isPlaying]);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
         }
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      
+      timerRef.current = window.setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      alert('Could not access microphone. Please check permissions.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      
+      if (timerRef.current) {
+        window.clearInterval(timerRef.current);
+        timerRef.current = null;
       }
-    } else {
-      // Start recording
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mediaRecorder = new MediaRecorder(stream);
-        mediaRecorderRef.current = mediaRecorder;
-        audioChunksRef.current = [];
 
-        mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            audioChunksRef.current.push(event.data);
-          }
-        };
-
-        mediaRecorder.onstop = () => {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-          onAudioRecorded(audioBlob);
-          setIsRecording(false);
-          
-          // Stop all tracks to release microphone
-          stream.getTracks().forEach(track => track.stop());
-        };
-
-        mediaRecorder.start();
-        setIsRecording(true);
-        setRecordingTime(0);
-        
-        // Start timer for recording duration
-        timerRef.current = window.setInterval(() => {
-          setRecordingTime(prev => prev + 1);
-        }, 1000);
-      } catch (error) {
-        console.error('Error accessing microphone:', error);
-        alert('Could not access microphone. Please check permissions.');
-      }
+      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+      onAudioRecorded(audioBlob);
+      setIsRecording(false);
     }
   };
 
@@ -105,10 +123,12 @@ const AudioInterface = ({ onAudioRecorded, isProcessing, audioResponse }: AudioI
       <div className="recording-section">
         <button 
           className={`record-button ${isRecording ? 'recording' : ''}`}
-          onClick={toggleRecording}
+          onMouseDown={startRecording}
+          onMouseUp={stopRecording}
+          onMouseLeave={stopRecording}
           disabled={isProcessing || isPlaying}
         >
-          {isRecording ? 'Stop Recording' : 'Start Recording'}
+          {isRecording ? 'Recording...' : 'Hold to Speak'}
         </button>
         
         {isRecording && (

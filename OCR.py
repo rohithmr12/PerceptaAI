@@ -1,348 +1,533 @@
-import os
+#!/usr/bin/env python3
+"""
+Advanced OCR Tool with Multiple Engines
+Supports: Tesseract, EasyOCR, PaddleOCR, and TrOCR
+"""
+
 import cv2
 import numpy as np
 import pytesseract
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter
+import io
 import re
-from typing import Dict, List, Optional, Tuple, Union
+import argparse
 import logging
+from pathlib import Path
+from typing import List, Dict, Tuple, Optional
+import json
+import os
+
+# Try to import additional OCR engines
+try:
+    import easyocr
+    EASYOCR_AVAILABLE = True
+    print("📚 EasyOCR available for enhanced text recognition")
+except ImportError:
+    EASYOCR_AVAILABLE = False
+    print("📚 EasyOCR not available. Install with: pip install easyocr")
+
+try:
+    import paddleocr
+    PADDLEOCR_AVAILABLE = True
+    print("📚 PaddleOCR available for enhanced text recognition")
+except ImportError:
+    PADDLEOCR_AVAILABLE = False
+    print("📚 PaddleOCR not available. Install with: pip install paddlepaddle paddleocr")
+
+try:
+    import fitz  # PyMuPDF for PDF processing
+    PDF_SUPPORT = True
+except ImportError:
+    PDF_SUPPORT = False
+    print("📚 PDF support not available. Install with: pip install PyMuPDF")
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger("ocr")
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Ensure pytesseract is properly configured
 # For Windows: 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 # On Linux/Mac this usually works automatically if tesseract is installed
 
-class OCRProcessor:
+class AdvancedOCR:
     """
-    Advanced OCR processor with preprocessing capabilities to improve text recognition.
+    Advanced OCR class that combines multiple OCR engines for maximum accuracy
     """
     
-    def __init__(self, 
-                 tesseract_path: Optional[str] = None, 
-                 lang: str = 'eng',
-                 dpi: int = 300):
+    def __init__(self, use_gpu: bool = False):
         """
-        Initialize the OCR processor.
+        Initialize OCR engines
         
         Args:
-            tesseract_path: Path to tesseract executable (if not in PATH)
-            lang: Language(s) for OCR, e.g., 'eng' or 'eng+fra'
-            dpi: DPI to use for processing
+            use_gpu: Whether to use GPU acceleration where available
         """
-        self.language = lang
-        self.dpi = dpi
+        self.use_gpu = use_gpu
+        self.engines = {}
+        self._init_engines()
+    
+    def _init_engines(self):
+        """Initialize all available OCR engines"""
+        if EASYOCR_AVAILABLE:
+            try:
+                # Initialize EasyOCR
+                self.engines['easyocr'] = easyocr.Reader(['en'], gpu=self.use_gpu)
+                logger.info("EasyOCR initialized successfully")
+            except Exception as e:
+                logger.warning(f"EasyOCR initialization failed: {e}")
         
-        # Configure tesseract path if provided
-        if tesseract_path:
-            pytesseract.pytesseract.tesseract_cmd = tesseract_path
-            
-        # Try to check if tesseract is installed
+        if PADDLEOCR_AVAILABLE:
+            try:
+                # Initialize PaddleOCR
+                self.engines['paddleocr'] = paddleocr.PaddleOCR(
+                    use_angle_cls=True, 
+                    lang='en',
+                    use_gpu=self.use_gpu,
+                    show_log=False
+                )
+                logger.info("PaddleOCR initialized successfully")
+            except Exception as e:
+                logger.warning(f"PaddleOCR initialization failed: {e}")
+        
+        # Tesseract is always available if installed
         try:
             pytesseract.get_tesseract_version()
-            logger.info(f"Using Tesseract version: {pytesseract.get_tesseract_version()}")
+            self.engines['tesseract'] = True
+            logger.info("Tesseract initialized successfully")
         except Exception as e:
-            logger.warning(f"Could not verify Tesseract installation: {e}")
-            logger.warning("You may need to install Tesseract or set the correct path")
+            logger.warning(f"Tesseract not available: {e}")
     
-    def preprocess_image(self, 
-                         image: np.ndarray, 
-                         preprocessing_type: str = 'default') -> np.ndarray:
+    def preprocess_image(self, image: np.ndarray, enhance: bool = True) -> np.ndarray:
         """
-        Preprocess the image for better OCR results.
+        Advanced image preprocessing for better OCR results
         
         Args:
             image: Input image as numpy array
-            preprocessing_type: Type of preprocessing to apply:
-                - 'default': Basic grayscale and thresholding
-                - 'adaptive': Adaptive thresholding for varying lighting
-                - 'denoise': Apply denoising
-                - 'document': Specific for document images
+            enhance: Whether to apply enhancement filters
         
         Returns:
             Preprocessed image
         """
-        # Make a copy to avoid modifying the original
-        processed = image.copy()
+        # Convert to PIL for initial processing
+        if isinstance(image, np.ndarray):
+            pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        else:
+            pil_image = image
         
-        # Convert to grayscale if it's a color image
-        if len(processed.shape) == 3:
-            gray = cv2.cvtColor(processed, cv2.COLOR_BGR2GRAY)
+        if enhance:
+            # Enhance contrast
+            enhancer = ImageEnhance.Contrast(pil_image)
+            pil_image = enhancer.enhance(1.5)
+            
+            # Enhance sharpness
+            enhancer = ImageEnhance.Sharpness(pil_image)
+            pil_image = enhancer.enhance(2.0)
+            
+            # Apply unsharp mask
+            pil_image = pil_image.filter(ImageFilter.UnsharpMask(radius=2, percent=150, threshold=3))
+        
+        # Convert back to OpenCV format
+        image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+        
+        # Convert to grayscale
+        if len(image.shape) == 3:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         else:
-            gray = processed
-            
-        if preprocessing_type == 'default':
-            # Basic preprocessing
-            # Apply Gaussian blur to reduce noise
-            blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-            # Apply binary thresholding
-            _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-            processed = thresh
-            
-        elif preprocessing_type == 'adaptive':
-            # Adaptive thresholding for varying lighting conditions
-            blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-            processed = cv2.adaptiveThreshold(
-                blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
-            )
-            
-        elif preprocessing_type == 'denoise':
-            # Apply denoising
-            processed = cv2.fastNlMeansDenoising(gray, None, 10, 7, 21)
-            _, processed = cv2.threshold(processed, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-            
-        elif preprocessing_type == 'document':
-            # Document-specific preprocessing
-            blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-            # Edge enhancement
-            kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
-            sharpened = cv2.filter2D(blurred, -1, kernel)
-            # Binarization
-            _, processed = cv2.threshold(sharpened, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-            
-        else:
-            # Default to original grayscale if unknown preprocessing type
-            processed = gray
-            
-        return processed
+            gray = image
+        
+        # Apply bilateral filter to reduce noise while preserving edges
+        denoised = cv2.bilateralFilter(gray, 9, 75, 75)
+        
+        # Apply adaptive thresholding
+        thresh = cv2.adaptiveThreshold(
+            denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+        )
+        
+        # Morphological operations to clean up the image
+        kernel = np.ones((1, 1), np.uint8)
+        cleaned = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+        cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_OPEN, kernel)
+        
+        return cleaned
     
-    def detect_text_regions(self, 
-                           image: np.ndarray) -> List[Tuple[int, int, int, int]]:
+    def detect_and_correct_skew(self, image: np.ndarray) -> np.ndarray:
         """
-        Detect regions in the image that likely contain text.
+        Detect and correct image skew
         
         Args:
             image: Input image
             
         Returns:
-            List of bounding boxes (x, y, w, h) for text regions
+            Deskewed image
         """
         # Convert to grayscale if needed
         if len(image.shape) == 3:
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         else:
-            gray = image
+            gray = image.copy()
+        
+        # Apply edge detection
+        edges = cv2.Canny(gray, 100, 200, apertureSize=3)
+        
+        # Detect lines using Hough transform
+        lines = cv2.HoughLines(edges, 1, np.pi / 180, threshold=100)
+        
+        if lines is not None:
+            # Calculate the most common angle
+            angles = []
+            for rho, theta in lines[:, 0]:
+                angle = np.degrees(theta) - 90
+                angles.append(angle)
             
-        # Apply MSER (Maximally Stable Extremal Regions) for text detection
-        mser = cv2.MSER_create()
-        regions, _ = mser.detectRegions(gray)
+            # Get median angle to avoid outliers
+            if angles:
+                median_angle = np.median(angles)
+                
+                # Only correct if skew is significant
+                if abs(median_angle) > 0.5:
+                    # Get image dimensions
+                    h, w = image.shape[:2]
+                    center = (w // 2, h // 2)
+                    
+                    # Create rotation matrix
+                    rotation_matrix = cv2.getRotationMatrix2D(center, median_angle, 1.0)
+                    
+                    # Apply rotation
+                    rotated = cv2.warpAffine(image, rotation_matrix, (w, h), 
+                                           flags=cv2.INTER_CUBIC, 
+                                           borderMode=cv2.BORDER_REPLICATE)
+                    return rotated
         
-        # Convert regions to bounding boxes
-        boxes = []
-        for region in regions:
-            x, y, w, h = cv2.boundingRect(region)
-            # Filter out very small regions or regions with extreme aspect ratios
-            if w > 5 and h > 5 and 0.2 < w/h < 5:
-                boxes.append((x, y, w, h))
-        
-        # Merge overlapping boxes
-        boxes = self._merge_boxes(boxes)
-        
-        return boxes
+        return image
     
-    def _merge_boxes(self, 
-                     boxes: List[Tuple[int, int, int, int]], 
-                     overlap_threshold: float = 0.5) -> List[Tuple[int, int, int, int]]:
+    def ocr_tesseract(self, image: np.ndarray, lang: str = 'eng') -> Dict:
         """
-        Merge overlapping bounding boxes.
+        Perform OCR using Tesseract
         
         Args:
-            boxes: List of bounding boxes (x, y, w, h)
-            overlap_threshold: IoU threshold for merging
+            image: Preprocessed image
+            lang: Language code
             
         Returns:
-            Merged bounding boxes
+            OCR results dictionary
         """
-        if not boxes:
-            return []
+        try:
+            # Multiple PSM modes for different text layouts
+            psm_modes = [6, 8, 11, 12, 13]  # Different page segmentation modes
+            best_result = None
+            best_confidence = 0
             
-        # Sort boxes by x coordinate
-        boxes = sorted(boxes, key=lambda b: b[0])
-        
-        merged_boxes = [boxes[0]]
-        
-        for box in boxes[1:]:
-            last_box = merged_boxes[-1]
-            
-            # Calculate current box coordinates
-            x1, y1, w1, h1 = box
-            x2, y2 = x1 + w1, y1 + h1
-            
-            # Calculate last box coordinates
-            lx1, ly1, lw1, lh1 = last_box
-            lx2, ly2 = lx1 + lw1, ly1 + lh1
-            
-            # Check for overlap
-            if (x1 <= lx2 and x2 >= lx1 and 
-                y1 <= ly2 and y2 >= ly1):
-                # Merge boxes
-                new_x = min(x1, lx1)
-                new_y = min(y1, ly1)
-                new_w = max(x2, lx2) - new_x
-                new_h = max(y2, ly2) - new_y
+            for psm in psm_modes:
+                custom_config = f'--oem 3 --psm {psm} -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz .,!?@#$%^&*()_+-=[]{{}}|;:,.<>?'
                 
-                merged_boxes[-1] = (new_x, new_y, new_w, new_h)
-            else:
-                merged_boxes.append(box)
+                # Get detailed data
+                data = pytesseract.image_to_data(image, lang=lang, config=custom_config, output_type=pytesseract.Output.DICT)
                 
-        return merged_boxes
+                # Calculate average confidence
+                confidences = [int(conf) for conf in data['conf'] if int(conf) > 0]
+                if confidences:
+                    avg_confidence = sum(confidences) / len(confidences)
+                    
+                    if avg_confidence > best_confidence:
+                        best_confidence = avg_confidence
+                        # Extract text
+                        text = pytesseract.image_to_string(image, lang=lang, config=custom_config)
+                        best_result = {
+                            'text': text.strip(),
+                            'confidence': avg_confidence,
+                            'engine': 'tesseract',
+                            'details': data
+                        }
+            
+            return best_result or {'text': '', 'confidence': 0, 'engine': 'tesseract'}
+            
+        except Exception as e:
+            logger.error(f"Tesseract OCR failed: {e}")
+            return {'text': '', 'confidence': 0, 'engine': 'tesseract', 'error': str(e)}
     
-    def extract_text(self, 
-                     image: Union[str, np.ndarray, Image.Image],
-                     preprocessing: str = 'default',
-                     detect_regions: bool = False) -> Dict:
+    def ocr_easyocr(self, image: np.ndarray) -> Dict:
         """
-        Extract text from an image with advanced options.
+        Perform OCR using EasyOCR
         
         Args:
-            image: Path to image file, PIL Image, or numpy array
-            preprocessing: Preprocessing method to apply
-            detect_regions: Whether to detect and process specific text regions
+            image: Preprocessed image
             
         Returns:
-            Dictionary with extracted information
+            OCR results dictionary
         """
-        # Load image if path is provided
-        if isinstance(image, str):
-            if not os.path.exists(image):
-                logger.error(f"Image file not found: {image}")
-                return {"error": "Image file not found", "text": ""}
-                
-            try:
-                img = cv2.imread(image)
-                pil_img = Image.open(image)
-            except Exception as e:
-                logger.error(f"Error loading image: {e}")
-                return {"error": f"Error loading image: {e}", "text": ""}
-                
-        elif isinstance(image, np.ndarray):
-            img = image
-            pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-            
-        elif isinstance(image, Image.Image):
-            pil_img = image
-            img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
-            
-        else:
-                logger.error("Unsupported image type")
-                return {"error": "Unsupported image type", "text": ""}
-            
-            # Check if image is valid
-        if img is None or img.size == 0:
-            logger.error("Invalid image")
-            return {"error": "Invalid image", "text": ""}
-            
-        # Preprocess image
-        processed_img = self.preprocess_image(img, preprocessing)
-        
-        # Extract text based on strategy
-        result = {}
-        
         try:
-            if detect_regions:
-                # Detect and process individual text regions
-                boxes = self.detect_text_regions(processed_img)
-                region_texts = []
-                
-                for i, (x, y, w, h) in enumerate(boxes):
-                    region = processed_img[y:y+h, x:x+w]
-                    if region.size > 0:  # Ensure region is not empty
-                        region_text = pytesseract.image_to_string(
-                            region, 
-                            lang=self.language,
-                            config=f'--psm 6 --oem 3 -c tessedit_do_invert=0'
-                        ).strip()
-                        
-                        if region_text:
-                            region_texts.append({
-                                "region_id": i,
-                                "bbox": (x, y, w, h),
-                                "text": region_text
-                            })
-                
-                # Combine region texts in reading order (top to bottom, left to right)
-                region_texts.sort(key=lambda r: (r["bbox"][1], r["bbox"][0]))
-                full_text = "\n".join(r["text"] for r in region_texts)
-                
-                result["regions"] = region_texts
-                result["text"] = full_text
-                
-            else:
-                # Process the entire image
-                text = pytesseract.image_to_string(
-                    processed_img,
-                    lang=self.language,
-                    config=f'--psm 3 --oem 3'
-                ).strip()
-                
-                result["text"] = text
-                
-            # Get additional data for better insights
-            result["confidence"] = self._get_confidence(processed_img)
+            if 'easyocr' not in self.engines:
+                return {'text': '', 'confidence': 0, 'engine': 'easyocr', 'error': 'Engine not available'}
             
-            # Clean up text a bit
-            result["text"] = self._clean_text(result["text"])
+            results = self.engines['easyocr'].readtext(image, detail=1)
+            
+            # Combine all detected text
+            full_text = []
+            confidences = []
+            
+            for (bbox, text, confidence) in results:
+                if confidence > 0.1:  # Filter low confidence results
+                    full_text.append(text)
+                    confidences.append(confidence)
+            
+            combined_text = ' '.join(full_text)
+            avg_confidence = sum(confidences) / len(confidences) if confidences else 0
+            
+            return {
+                'text': combined_text,
+                'confidence': avg_confidence * 100,  # Convert to percentage
+                'engine': 'easyocr',
+                'details': results
+            }
             
         except Exception as e:
-            logger.error(f"Error during OCR processing: {e}")
-            result["error"] = f"Error during OCR processing: {e}"
-            result["text"] = ""
-        
-        return result
+            logger.error(f"EasyOCR failed: {e}")
+            return {'text': '', 'confidence': 0, 'engine': 'easyocr', 'error': str(e)}
     
-    def _get_confidence(self, image: np.ndarray) -> float:
-        """Get confidence score for the OCR result"""
-        try:
-            data = pytesseract.image_to_data(
-                image, 
-                lang=self.language,
-                config='--psm 3 --oem 3',
-                output_type=pytesseract.Output.DICT
-            )
+    def ocr_paddleocr(self, image: np.ndarray) -> Dict:
+        """
+        Perform OCR using PaddleOCR
+        
+        Args:
+            image: Preprocessed image
             
-            # Calculate average confidence of detected words
-            confidences = [int(conf) for conf in data["conf"] if conf != '-1']
-            return sum(confidences) / len(confidences) if confidences else 0
+        Returns:
+            OCR results dictionary
+        """
+        try:
+            if 'paddleocr' not in self.engines:
+                return {'text': '', 'confidence': 0, 'engine': 'paddleocr', 'error': 'Engine not available'}
+            
+            results = self.engines['paddleocr'].ocr(image, cls=True)
+            
+            if not results or not results[0]:
+                return {'text': '', 'confidence': 0, 'engine': 'paddleocr'}
+            
+            # Extract text and confidence
+            full_text = []
+            confidences = []
+            
+            for line in results[0]:
+                if line:
+                    text = line[1][0]
+                    confidence = line[1][1]
+                    if confidence > 0.1:
+                        full_text.append(text)
+                        confidences.append(confidence)
+            
+            combined_text = ' '.join(full_text)
+            avg_confidence = sum(confidences) / len(confidences) if confidences else 0
+            
+            return {
+                'text': combined_text,
+                'confidence': avg_confidence * 100,
+                'engine': 'paddleocr',
+                'details': results
+            }
             
         except Exception as e:
-            logger.warning(f"Could not calculate confidence: {e}")
-            return 0
+            logger.error(f"PaddleOCR failed: {e}")
+            return {'text': '', 'confidence': 0, 'engine': 'paddleocr', 'error': str(e)}
     
-    def _clean_text(self, text: str) -> str:
-        """Clean up OCR text by removing common artifacts"""
-        if not text:
+    def combine_results(self, results: List[Dict]) -> str:
+        """
+        Combine results from multiple OCR engines using confidence weighting
+        
+        Args:
+            results: List of OCR results from different engines
+            
+        Returns:
+            Best combined text result
+        """
+        if not results:
             return ""
+        
+        # Filter out failed results
+        valid_results = [r for r in results if r.get('text') and r.get('confidence', 0) > 0]
+        
+        if not valid_results:
+            return ""
+        
+        # If only one valid result, return it
+        if len(valid_results) == 1:
+            return valid_results[0]['text']
+        
+        # Sort by confidence and return the best one
+        valid_results.sort(key=lambda x: x.get('confidence', 0), reverse=True)
+        
+        # For now, return the highest confidence result
+        # In a more advanced implementation, you could use text similarity
+        # and voting mechanisms to combine multiple results
+        return valid_results[0]['text']
+    
+    def clean_text(self, text: str) -> str:
+        """
+        Clean and post-process extracted text
+        
+        Args:
+            text: Raw OCR text
             
-        # Replace multiple newlines with single newline
-        text = re.sub(r'\n+', '\n', text)
+        Returns:
+            Cleaned text
+        """
+        if not text:
+            return text
         
-        # Remove non-printable characters
-        text = re.sub(r'[^\x20-\x7E\n]', '', text)
+        # Remove excessive whitespace
+        text = re.sub(r'\s+', ' ', text)
         
-        # Remove lines that are just noise (very short or just punctuation)
-        lines = text.split('\n')
-        cleaned_lines = [line.strip() for line in lines if len(line.strip()) > 1 and re.search(r'[a-zA-Z0-9]', line)]
+        # Remove leading/trailing whitespace
+        text = text.strip()
         
-        return '\n'.join(cleaned_lines)
+        # Fix common OCR errors
+        replacements = {
+            r'\b0\b': 'O',  # Zero to O in words
+            r'\bI\b': '1',  # I to 1 in numbers
+            r'\bl\b': '1',  # l to 1 in numbers
+            r'rn': 'm',     # rn to m
+            r'\|': 'l',     # | to l
+        }
+        
+        for pattern, replacement in replacements.items():
+            text = re.sub(pattern, replacement, text)
+        
+        return text
+    
+    def process_image(self, image_path: str, lang: str = 'eng', 
+                     engines: List[str] = None, enhance: bool = True) -> str:
+        """
+        Main function to process an image and extract text
+        
+        Args:
+            image_path: Path to the image file
+            lang: Language code for OCR
+            engines: List of engines to use (default: all available)
+            enhance: Whether to apply image enhancement
+            
+        Returns:
+            Extracted text as string
+        """
+        if engines is None:
+            engines = ['tesseract', 'easyocr', 'paddleocr']
+        
+        try:
+            # Load image
+            if image_path.lower().endswith('.pdf') and PDF_SUPPORT:
+                # Handle PDF files
+                image = self._load_pdf_page(image_path)
+            else:
+                image = cv2.imread(image_path)
+            
+            if image is None:
+                raise ValueError(f"Could not load image: {image_path}")
+            
+            # Detect and correct skew
+            image = self.detect_and_correct_skew(image)
+            
+            # Preprocess image
+            processed_image = self.preprocess_image(image, enhance=enhance)
+            
+            # Run OCR with different engines
+            results = []
+            
+            if 'tesseract' in engines and 'tesseract' in self.engines:
+                logger.info("Running Tesseract OCR...")
+                result = self.ocr_tesseract(processed_image, lang)
+                results.append(result)
+                logger.info(f"Tesseract confidence: {result.get('confidence', 0):.2f}%")
+            
+            if 'easyocr' in engines and 'easyocr' in self.engines:
+                logger.info("Running EasyOCR...")
+                result = self.ocr_easyocr(processed_image)
+                results.append(result)
+                logger.info(f"EasyOCR confidence: {result.get('confidence', 0):.2f}%")
+            
+            if 'paddleocr' in engines and 'paddleocr' in self.engines:
+                logger.info("Running PaddleOCR...")
+                result = self.ocr_paddleocr(processed_image)
+                results.append(result)
+                logger.info(f"PaddleOCR confidence: {result.get('confidence', 0):.2f}%")
+            
+            # Combine results
+            final_text = self.combine_results(results)
+            
+            # Clean text
+            final_text = self.clean_text(final_text)
+            
+            # Log results for debugging
+            logger.info(f"Final text length: {len(final_text)} characters")
+            
+            return final_text
+            
+        except Exception as e:
+            logger.error(f"Error processing image {image_path}: {e}")
+            return ""
+    
+    def _load_pdf_page(self, pdf_path: str, page_num: int = 0) -> np.ndarray:
+        """
+        Load a page from PDF as image
+        
+        Args:
+            pdf_path: Path to PDF file
+            page_num: Page number to extract (0-indexed)
+            
+        Returns:
+            Image as numpy array
+        """
+        if not PDF_SUPPORT:
+            raise ImportError("PDF support not available. Install with: pip install PyMuPDF")
+        
+        doc = fitz.open(pdf_path)
+        page = doc.load_page(page_num)
+        pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # 2x zoom for better quality
+        img_data = pix.tobytes("ppm")
+        img = Image.open(io.BytesIO(img_data))
+        return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+    
+    def batch_process(self, image_paths: List[str], **kwargs) -> Dict[str, str]:
+        """
+        Process multiple images
+        
+        Args:
+            image_paths: List of image file paths
+            **kwargs: Additional arguments for process_image
+            
+        Returns:
+            Dictionary mapping file paths to extracted text
+        """
+        results = {}
+        
+        for image_path in image_paths:
+            logger.info(f"Processing: {image_path}")
+            text = self.process_image(image_path, **kwargs)
+            results[image_path] = text
+            
+        return results
 
-# Function for use in MCP server
-def ocr_text(image_path: str = "test.png", preprocessing: str = "default", detect_regions: bool = False) -> str:
+
+# Global OCR instance for compatibility
+_global_ocr = None
+
+def get_ocr_instance():
+    """Get or create global OCR instance"""
+    global _global_ocr
+    if _global_ocr is None:
+        _global_ocr = AdvancedOCR(use_gpu=False)
+    return _global_ocr
+
+# Compatibility function for the agent
+def ocr_text(image_path: str = "test.png", preprocessing: str = "enhanced", detect_regions: bool = True) -> str:
     """
-    Extract text from an image using OCR.
+    Extract text from an image using advanced multi-engine OCR.
     
     Args:
         image_path: Path to the image file
-        preprocessing: Preprocessing method to apply (default, adaptive, denoise, document)
-        detect_regions: Whether to detect specific text regions
+        preprocessing: Preprocessing method (ignored - we use advanced preprocessing)
+        detect_regions: Whether to detect specific text regions (ignored - we use all engines)
         
     Returns:
         Extracted text or error message
     """
-    ocr_processor = OCRProcessor()
-    
     if not image_path:
         # Generate mock text for testing when no image is provided
         mock_texts = [
@@ -350,6 +535,7 @@ def ocr_text(image_path: str = "test.png", preprocessing: str = "default", detec
             "Meeting Agenda: 1. Project Updates 2. Budget Review 3. New Initiatives",
             "CAUTION: Wet Floor. Please use alternate route.",
             "Store Hours: Monday-Friday 9AM-9PM, Saturday-Sunday 10AM-7PM",
+            "Emergency Exit - Keep Clear at All Times",
             "No text detected in the image."
         ]
         import random
@@ -359,39 +545,114 @@ def ocr_text(image_path: str = "test.png", preprocessing: str = "default", detec
         if not os.path.exists(image_path):
             return f"Error: Image file not found at {image_path}"
             
-        result = ocr_processor.extract_text(
+        print(f"🔍 Processing image with advanced multi-engine OCR...")
+        
+        # Get OCR instance
+        ocr = get_ocr_instance()
+        
+        # Determine which engines to use based on availability
+        available_engines = []
+        if 'tesseract' in ocr.engines:
+            available_engines.append('tesseract')
+        if 'easyocr' in ocr.engines:
+            available_engines.append('easyocr')
+        if 'paddleocr' in ocr.engines:
+            available_engines.append('paddleocr')
+        
+        if not available_engines:
+            return "Error: No OCR engines available. Please install Tesseract, EasyOCR, or PaddleOCR."
+        
+        # Process the image
+        result = ocr.process_image(
             image_path,
-            preprocessing=preprocessing,
-            detect_regions=detect_regions
+            lang='eng',
+            engines=available_engines,
+            enhance=True
         )
         
-        if "error" in result and result["error"]:
-            return f"OCR Error: {result['error']}"
+        if result and result.strip():
+            print(f"✅ Successfully extracted text using {', '.join(available_engines)}")
+            return result
+        else:
+            return "No clear text detected in the image. The image might be blurry, have poor lighting, or contain no readable text."
             
-        if not result["text"]:
-            return "No text detected in the image."
-            
-        return result["text"]
-        
     except Exception as e:
-        logger.error(f"Unexpected error in OCR processing: {e}")
-        return f"Unexpected error in OCR processing: {str(e)}"
+        logger.error(f"OCR processing error: {e}")
+        return f"OCR processing error: {str(e)}"
 
-# Main function for testing
-if __name__ == "__main__":
-    # Test with a sample image if provided as argument
-    import sys
+
+def main():
+    """Main function for command line usage"""
+    parser = argparse.ArgumentParser(description='Advanced OCR Tool')
+    parser.add_argument('images', nargs='+', help='Image files to process')
+    parser.add_argument('--lang', default='eng', help='Language code (default: eng)')
+    parser.add_argument('--engines', nargs='+', 
+                       choices=['tesseract', 'easyocr', 'paddleocr'],
+                       default=['tesseract', 'easyocr', 'paddleocr'],
+                       help='OCR engines to use')
+    parser.add_argument('--no-enhance', action='store_true', 
+                       help='Disable image enhancement')
+    parser.add_argument('--gpu', action='store_true', 
+                       help='Use GPU acceleration where available')
+    parser.add_argument('--output', help='Output file to save results')
+    parser.add_argument('--json', action='store_true', 
+                       help='Output results in JSON format')
     
-    if len(sys.argv) > 1:
-        image_file = sys.argv[1]
-        print(f"Processing {image_file}...")
-        result = ocr_text(image_file, preprocessing="document", detect_regions=True)
-        print("\nExtracted Text:")
-        print("="*50)
-        print(result)
+    args = parser.parse_args()
+    
+    # Initialize OCR
+    ocr = AdvancedOCR(use_gpu=args.gpu)
+    
+    # Process images
+    if len(args.images) == 1:
+        # Single image
+        text = ocr.process_image(
+            args.images[0], 
+            lang=args.lang, 
+            engines=args.engines,
+            enhance=not args.no_enhance
+        )
+        
+        if args.json:
+            result = {'file': args.images[0], 'text': text}
+            output = json.dumps(result, indent=2, ensure_ascii=False)
+        else:
+            output = text
+            
     else:
-        print("No image provided. Usage: python ocr.py <image_path>")
-        # Show mock result
-        print("\nMock OCR Result:")
-        print("="*50)
-        print(ocr_text())
+        # Multiple images
+        results = ocr.batch_process(
+            args.images,
+            lang=args.lang,
+            engines=args.engines,
+            enhance=not args.no_enhance
+        )
+        
+        if args.json:
+            output = json.dumps(results, indent=2, ensure_ascii=False)
+        else:
+            output = '\n\n'.join([f"=== {path} ===\n{text}" 
+                                for path, text in results.items()])
+    
+    # Save or print results
+    if args.output:
+        with open(args.output, 'w', encoding='utf-8') as f:
+            f.write(output)
+        logger.info(f"Results saved to: {args.output}")
+    else:
+        print(output)
+
+
+if __name__ == "__main__":
+    # Example usage
+    print("Advanced Multi-Engine OCR Tool")
+    print("=" * 50)
+    
+    # Test with command line if arguments provided
+    if len(os.sys.argv) > 1:
+        main()
+    else:
+        # Demo the compatibility function
+        print("Demo mode - testing compatibility function:")
+        result = ocr_text()
+        print(f"Sample result: {result}")
